@@ -1,0 +1,9 @@
+{
+  "port_range": {
+    "start": 1,
+    "end": 65535
+  },
+  "interval": 30000000000,
+  "state_path": "/var/lib/portwatch/state.json",
+  "alert_output": "/var/log/portwatch/alerts.log"
+}
