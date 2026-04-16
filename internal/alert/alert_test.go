@@ -60,3 +60,22 @@ func TestOutputContainsTimestamp(t *testing.T) {
 		t.Errorf("expected RFC3339 timestamp in output, got: %s", out)
 	}
 }
+
+func TestOutputContainsProto(t *testing.T) {
+	tests := []struct {
+		proto string
+		port  int
+	}{
+		{"tcp", 22},
+		{"udp", 161},
+	}
+	for _, tt := range tests {
+		var buf bytes.Buffer
+		n := alert.New(&buf)
+		n.PortOpened(makePort(tt.proto, tt.port))
+		out := buf.String()
+		if !strings.Contains(out, tt.proto) {
+			t.Errorf("expected proto %q in output, got: %s", tt.proto, out)
+		}
+	}
+}
