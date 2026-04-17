@@ -3,54 +3,57 @@ package config
 import (
 	"encoding/json"
 	"os"
-	"time"
 )
 
-// Config holds the runtime configuration for portwatch.
+// Config holds all portwatch configuration.
 type Config struct {
-	PortRange   PortRange     `json:"port_range"`
-	Interval    time.Duration `json:"interval"`
-	StatePath   string        `json:"state_path"`
-	AlertOutput string        `json:"alert_output"`
-}
-
-// PortRange defines the inclusive start/end ports to scan.
-type PortRange struct {
-	Start int `json:"start"`
-	End   int `json:"end"`
+	StartPort    int    `json:"start_port"`
+	EndPort      int    `json:"end_port"`
+	IntervalSecs int    `json:"interval_secs"`
+	StatePath    string `json:"state_path"`
+	IgnoredPorts []int  `json:"ignored_ports"`
 }
 
 // Default returns a Config with sensible defaults.
 func Default() *Config {
 	return &Config{
-		PortRange:   PortRange{Start: 1, End: 65535},
-		Interval:    30 * time.Second,
-		StatePath:   "/var/lib/portwatch/state.json",
-		AlertOutput: "",
+		StartPort:    1,
+		EndPort:      1024,
+		IntervalSecs: 60,
+		StatePath:    "/tmp/portwatch_state.json",
+		IgnoredPorts: []int{},
 	}
 }
 
-// Load reads a JSON config file from path, overlaying values onto defaults.
+// Load reads a JSON config file and merges it over the defaults.
 func Load(path string) (*Config, error) {
 	cfg := Default()
-	f, err := os.Open(path)
+
+	data, err := os.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrConfigNotFound
+		}
 		return nil, err
 	}
-	defer f.Close()
-	if err := json.NewDecoder(f).Decode(cfg); err != nil {
+
+	if err := json.Unmarshal(data, cfg); err != nil {
 		return nil, err
 	}
+
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
-// Validate returns an error if the config contains invalid values.
-func (c *Config) Validate() error {
-	if c.PortRange.Start < 1 || c.PortRange.End > 65535 || c.PortRange.Start > c.PortRange.End {
+func (c *Config) validate() error {
+	if c.StartPort < 1 || c.EndPort > 65535 || c.StartPort > c.EndPort {
 		return ErrInvalidPortRange
 	}
-	if c.Interval < time.Second {
-		return ErrIntervalTooShort
+	if c.IntervalSecs < 1 {
+		return ErrInvalidInterval
 	}
 	return nil
 }
