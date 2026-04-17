@@ -1,57 +1,54 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/user/portwatch/internal/alert"
-	"github.com/user/portwatch/internal/config"
-	"github.com/user/portwatch/internal/monitor"
-	"github.com/user/portwatch/internal/scanner"
-	"github.com/user/portwatch/internal/state"
+	"github.com/example/portwatch/internal/alert"
+	"github.com/example/portwatch/internal/config"
+	"github.com/example/portwatch/internal/monitor"
+	"github.com/example/portwatch/internal/schedule"
+	"github.com/example/portwatch/internal/state"
 )
 
 func main() {
-	cfgPath := flag.String("config", "", "path to JSON config file (optional)")
-	flag.Parse()
-
-	var cfg *config.Config
-	var err error
-	if *cfgPath != "" {
-		cfg, err = config.Load(*cfgPath)
-		if err != nil {
-			log.Fatalf("portwatch: failed to load config: %v", err)
-		}
-	} else {
+	cfg, err := config.Load("config.json")
+	if err != nil {
+		log.Printf("using defaults: %v", err)
 		cfg = config.Default()
 	}
 
-	if err := cfg.Validate(); err != nil {
-		log.Fatalf("portwatch: invalid config: %v", err)
-	}
-
-	var alertOut = os.Stdout
-	if cfg.AlertOutput != "" {
-		f, err := os.OpenFile(cfg.AlertOutput, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatalf("portwatch: cannot open alert output: %v", err)
-		}
-		defer f.Close()
-		alertOut = f
-	}
-
-	sc := scanner.New(cfg.PortRange.Start, cfg.PortRange.End)
-	st, err := state.New(cfg.StatePath)
+	st, err := state.New(cfg.StateFile)
 	if err != nil {
-		log.Fatalf("portwatch: state init failed: %v", err)
+		log.Fatalf("state: %v", err)
 	}
-	al := alert.New(alertOut)
-	mon := monitor.New(sc, st, al)
 
-	fmt.Printf("portwatch: starting — scanning ports %d-%d every %v\n",
-		cfg.PortRange.Start, cfg.PortRange.End, cfg.Interval)
+	al, err := alert.New(os.Stdout)
+	if err != nil {
+		log.Fatalf("alert: %v", err)
+	}
 
-	mon.Run(cfg.Interval)
+	mon, err := monitor.New(cfg, st, al)
+	if err != nil {
+		log.Fatalf("monitor: %v", err)
+	}
+
+	sched := schedule.New(cfg.Interval)
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+
+	log.Printf("portwatch started (interval=%s range=%s)", cfg.Interval, cfg.PortRange)
+
+	go sched.Start(func() {
+		if err := mon.Run(); err != nil {
+			log.Printf("monitor error: %v", err)
+		}
+	})
+
+	<-sig
+	log.Println("shutting down")
+	sched.Stop()
 }
