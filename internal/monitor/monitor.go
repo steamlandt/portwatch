@@ -12,7 +12,7 @@ import (
 type Monitor struct {
 	scanner  *scanner.Scanner
 	store    *state.Store
-	alerter  *alert.Alerter
+	aleriter  *alert.Alerter
 	interval time.Duration
 	stop     chan struct{}
 }
@@ -38,7 +38,7 @@ func New(cfg Config, alerter *alert.Alerter) (*Monitor, error) {
 	return &Monitor{
 		scanner:  sc,
 		store:    st,
-		alerter:  alerter,
+		aleriter:  alerter,
 		interval: cfg.Interval,
 		stop:     make(chan struct{}),
 	}, nil
@@ -66,8 +66,19 @@ func (m *Monitor) Stop() {
 	close(m.stop)
 }
 
+// ScanOnce performs a single scan synchronously and returns the number of open ports found.
+func (m *Monitor) ScanOnce() int {
+	open := m.scanner.Scan()
+	m.processScan(open)
+	return len(open)
+}
+
 func (m *Monitor) scan() {
 	open := m.scanner.Scan()
+	m.processScan(open)
+}
+
+func (m *Monitor) processScan(open []scanner.Port) {
 	openSet := make(map[int]bool, len(open))
 	for _, p := range open {
 		openSet[p.Number] = true
@@ -77,7 +88,7 @@ func (m *Monitor) scan() {
 	for _, p := range open {
 		prev, known := m.store.Get(p.Number)
 		if !known || !prev.Open {
-			m.alerter.PortOpened(p)
+			m.aleriter.PortOpened(p)
 		}
 		m.store.Set(state.PortState{Port: p.Number, Open: true, LastSeen: time.Now()})
 	}
@@ -85,7 +96,7 @@ func (m *Monitor) scan() {
 	// Detect newly closed ports.
 	for _, prev := range m.store.All() {
 		if prev.Open && !openSet[prev.Port] {
-			m.alerter.PortClosed(scanner.Port{Number: prev.Port})
+			m.aleriter.PortClosed(scanner.Port{Number: prev.Port})
 			m.store.Set(state.PortState{Port: prev.Port, Open: false, LastSeen: time.Now()})
 		}
 	}
