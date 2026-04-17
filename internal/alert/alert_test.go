@@ -79,3 +79,22 @@ func TestOutputContainsProto(t *testing.T) {
 		}
 	}
 }
+
+func TestEachEventWritesExactlyOneLine(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   func(*alert.Notifier)
+	}{
+		{"PortOpened", func(n *alert.Notifier) { n.PortOpened(makePort("tcp", 80)) }},
+		{"PortClosed", func(n *alert.Notifier) { n.PortClosed(makePort("tcp", 80)) }},
+	}
+	for _, tt := range tests {
+		var buf bytes.Buffer
+		n := alert.New(&buf)
+		tt.fn(n)
+		lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
+		if len(lines) != 1 {
+			t.Errorf("%s: expected 1 line of output, got %d: %q", tt.name, len(lines), buf.String())
+		}
+	}
+}
