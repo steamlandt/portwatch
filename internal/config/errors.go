@@ -2,8 +2,8 @@ package config
 
 import "errors"
 
-// Sentinel errors for config validation.
 var (
-	ErrInvalidPortRange = errors.New("config: port range must be between 1-65535 with start <= end")
-	ErrIntervalTooShort = errors.New("config: interval must be at least 1 second")
+	ErrNotFound       = errors.New("config file not found")
+	ErrInvalidRange   = errors.New("invalid port range")
+	ErrInvalidInterval = errors.New("interval must be >= 1")
 )
