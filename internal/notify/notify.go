@@ -55,11 +55,16 @@ func (n *Notifier) sendStdout(subject, body string) error {
 }
 
 func (n *Notifier) sendWebhook(subject, body string) error {
+	if n.cfg.Target == "" {
+		return fmt.Errorf("webhook target URL is not configured")
+	}
 	payload := fmt.Sprintf(`{"subject":%q,"body":%q}`, subject, body)
-	cmd := exec.Command("curl", "-s", "-X", "POST",
-		"-H", "Content-Type: application/json",
-		"-d", payload,
-		n.cfg.Target)
+	args := []string{"-s", "-X", "POST", "-H", "Content-Type: application/json"}
+	for k, v := range n.cfg.Headers {
+		args = append(args, "-H", fmt.Sprintf("%s: %s", k, v))
+	}
+	args = append(args, "-d", payload, n.cfg.Target)
+	cmd := exec.Command("curl", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("webhook failed: %w: %s", err, strings.TrimSpace(string(out)))
@@ -68,6 +73,9 @@ func (n *Notifier) sendWebhook(subject, body string) error {
 }
 
 func (n *Notifier) sendExec(subject, body string) error {
+	if n.cfg.Target == "" {
+		return fmt.Errorf("exec target command is not configured")
+	}
 	cmd := exec.Command(n.cfg.Target, subject, body)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
