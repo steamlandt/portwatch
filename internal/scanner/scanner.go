@@ -50,3 +50,18 @@ func (s *Scanner) Scan(start, end int) ([]Port, error) {
 	}
 	return open, nil
 }
+
+// ScanOne checks whether a single port is open on the host.
+// It returns true if the port is open, false otherwise.
+func (s *Scanner) ScanOne(port int) (bool, error) {
+	if port < 1 || port > 65535 {
+		return false, fmt.Errorf("invalid port: %d", port)
+	}
+	addr := net.JoinHostPort(s.Host, strconv.Itoa(port))
+	conn, err := net.DialTimeout("tcp", addr, s.Timeout)
+	if err != nil {
+		return false, nil
+	}
+	conn.Close()
+	return true, nil
+}
