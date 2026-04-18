@@ -60,11 +60,28 @@ func (n *Notifier) PortClosed(p scanner.Port) {
 	})
 }
 
+// Info fires an INFO event with a custom message.
+func (n *Notifier) Info(msg string) {
+	n.send(Event{
+		Level:     LevelInfo,
+		Message:   msg,
+		Timestamp: time.Now(),
+	})
+}
+
 func (n *Notifier) send(e Event) {
-	fmt.Fprintf(n.out, "%s [%s] %s — %s\n",
+	if e.Port != (scanner.Port{}) {
+		fmt.Fprintf(n.out, "%s [%s] %s — %s\n",
+			e.Timestamp.Format(time.RFC3339),
+			e.Level,
+			e.Port.String(),
+			e.Message,
+		)
+		return
+	}
+	fmt.Fprintf(n.out, "%s [%s] %s\n",
 		e.Timestamp.Format(time.RFC3339),
 		e.Level,
-		e.Port.String(),
 		e.Message,
 	)
 }
