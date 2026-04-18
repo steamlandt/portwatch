@@ -84,3 +84,18 @@ func TestDiffNoDifference(t *testing.T) {
 		t.Errorf("expected no diff, got added=%v removed=%v", added, removed)
 	}
 }
+
+func TestDiffProtocolDistinct(t *testing.T) {
+	// Ports with the same number but different protocols should be treated as distinct.
+	prev := snapshot.Snapshot{Ports: []scanner.Port{makePort(80, "tcp")}}
+	next := snapshot.Snapshot{Ports: []scanner.Port{makePort(80, "udp")}}
+
+	added, removed := snapshot.Diff(prev, next)
+
+	if len(added) != 1 || added[0].Protocol != "udp" {
+		t.Errorf("expected udp/80 added, got %v", added)
+	}
+	if len(removed) != 1 || removed[0].Protocol != "tcp" {
+		t.Errorf("expected tcp/80 removed, got %v", removed)
+	}
+}
