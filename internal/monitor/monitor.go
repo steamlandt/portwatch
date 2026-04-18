@@ -12,7 +12,7 @@ import (
 type Monitor struct {
 	scanner  *scanner.Scanner
 	store    *state.Store
-	aleriter  *alert.Alerter
+	alerter  *alert.Alerter
 	interval time.Duration
 	stop     chan struct{}
 }
@@ -38,7 +38,7 @@ func New(cfg Config, alerter *alert.Alerter) (*Monitor, error) {
 	return &Monitor{
 		scanner:  sc,
 		store:    st,
-		aleriter:  alerter,
+		alerter:  alerter,
 		interval: cfg.Interval,
 		stop:     make(chan struct{}),
 	}, nil
@@ -88,7 +88,7 @@ func (m *Monitor) processScan(open []scanner.Port) {
 	for _, p := range open {
 		prev, known := m.store.Get(p.Number)
 		if !known || !prev.Open {
-			m.aleriter.PortOpened(p)
+			m.alerter.PortOpened(p)
 		}
 		m.store.Set(state.PortState{Port: p.Number, Open: true, LastSeen: time.Now()})
 	}
@@ -96,7 +96,7 @@ func (m *Monitor) processScan(open []scanner.Port) {
 	// Detect newly closed ports.
 	for _, prev := range m.store.All() {
 		if prev.Open && !openSet[prev.Port] {
-			m.aleriter.PortClosed(scanner.Port{Number: prev.Port})
+			m.alerter.PortClosed(scanner.Port{Number: prev.Port})
 			m.store.Set(state.PortState{Port: prev.Port, Open: false, LastSeen: time.Now()})
 		}
 	}
