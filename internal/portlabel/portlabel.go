@@ -1,10 +1,9 @@
-// Package portlabel maps well-known port numbers to human-readable service names.
 package portlabel
 
 import "fmt"
 
-// defaultLabels contains a curated set of well-known port-to-service mappings.
-var defaultLabels = map[int]string{
+// wellKnown maps common port numbers to their service names.
+var wellKnown = map[int]string{
 	21:   "ftp",
 	22:   "ssh",
 	23:   "telnet",
@@ -26,34 +25,34 @@ var defaultLabels = map[int]string{
 	27017: "mongodb",
 }
 
-// Labeler resolves port numbers to service name strings.
+// Labeler resolves port numbers to human-readable service names.
 type Labeler struct {
-	labels map[int]string
+	custom map[int]string
 }
 
-// New creates a Labeler. Custom overrides are merged on top of the built-in
-// defaults; a nil map is safe and uses only defaults.
+// New creates a Labeler. Custom overrides any built-in mappings.
 func New(custom map[int]string) *Labeler {
-	merged := make(map[int]string, len(defaultLabels)+len(custom))
-	for k, v := range defaultLabels {
-		merged[k] = v
-	}
+	c := make(map[int]string, len(custom))
 	for k, v := range custom {
-		merged[k] = v
+		c[k] = v
 	}
-	return &Labeler{labels: merged}
+	return &Labeler{custom: c}
 }
 
-// Label returns the service name for the given port number, or an empty string
-// if the port is not recognised.
+// Label returns the service name for the given port, or an empty string if unknown.
 func (l *Labeler) Label(port int) string {
-	return l.labels[port]
+	if name, ok := l.custom[port]; ok {
+		return name
+	}
+	if name, ok := wellKnown[port]; ok {
+		return name
+	}
+	return ""
 }
 
-// LabelOrPort returns the service name if known, otherwise the port number
-// formatted as a decimal string.
+// LabelOrPort returns the service name if known, otherwise the port number as a string.
 func (l *Labeler) LabelOrPort(port int) string {
-	if name := l.labels[port]; name != "" {
+	if name := l.Label(port); name != "" {
 		return name
 	}
 	return fmt.Sprintf("%d", port)

@@ -1,55 +1,48 @@
-package portlabel_test
+package portlabel
 
-import (
-	"testing"
-
-	"github.com/user/portwatch/internal/portlabel"
-)
+import "testing"
 
 func TestLabelKnownPort(t *testing.T) {
-	l := portlabel.New(nil)
+	l := New(nil)
 	if got := l.Label(22); got != "ssh" {
-		t.Fatalf("expected ssh, got %q", got)
+		t.Errorf("expected ssh, got %q", got)
 	}
 }
 
 func TestLabelUnknownPortReturnsEmpty(t *testing.T) {
-	l := portlabel.New(nil)
+	l := New(nil)
 	if got := l.Label(9999); got != "" {
-		t.Fatalf("expected empty string, got %q", got)
+		t.Errorf("expected empty string, got %q", got)
 	}
 }
 
 func TestLabelOrPortFallsBackToNumber(t *testing.T) {
-	l := portlabel.New(nil)
+	l := New(nil)
 	if got := l.LabelOrPort(9999); got != "9999" {
-		t.Fatalf("expected \"9999\", got %q", got)
+		t.Errorf("expected \"9999\", got %q", got)
 	}
 }
 
 func TestLabelOrPortReturnsName(t *testing.T) {
-	l := portlabel.New(nil)
+	l := New(nil)
 	if got := l.LabelOrPort(443); got != "https" {
-		t.Fatalf("expected https, got %q", got)
+		t.Errorf("expected https, got %q", got)
 	}
 }
 
 func TestCustomOverridesDefault(t *testing.T) {
-	custom := map[int]string{80: "my-http"}
-	l := portlabel.New(custom)
-	if got := l.Label(80); got != "my-http" {
-		t.Fatalf("expected my-http, got %q", got)
+	l := New(map[int]string{80: "my-app"})
+	if got := l.Label(80); got != "my-app" {
+		t.Errorf("expected my-app, got %q", got)
 	}
 }
 
-func TestCustomAddsNewEntry(t *testing.T) {
-	custom := map[int]string{12345: "my-service"}
-	l := portlabel.New(custom)
-	if got := l.Label(12345); got != "my-service" {
-		t.Fatalf("expected my-service, got %q", got)
+func TestCustomPortNotInDefaults(t *testing.T) {
+	l := New(map[int]string{12345: "custom-svc"})
+	if got := l.Label(12345); got != "custom-svc" {
+		t.Errorf("expected custom-svc, got %q", got)
 	}
-	// Built-in defaults still present.
 	if got := l.Label(22); got != "ssh" {
-		t.Fatalf("expected ssh, got %q", got)
+		t.Errorf("built-in should still work, got %q", got)
 	}
 }
