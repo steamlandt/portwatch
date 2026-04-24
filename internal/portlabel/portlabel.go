@@ -1,7 +1,10 @@
+// Package portlabel maps well-known port numbers to human-readable service names.
 package portlabel
 
-// Well-known port labels for common services.
-var wellKnown = map[uint16]string{
+import "fmt"
+
+// defaultLabels contains a curated set of well-known port-to-service mappings.
+var defaultLabels = map[int]string{
 	21:   "ftp",
 	22:   "ssh",
 	23:   "telnet",
@@ -11,6 +14,10 @@ var wellKnown = map[uint16]string{
 	110:  "pop3",
 	143:  "imap",
 	443:  "https",
+	465:  "smtps",
+	587:  "submission",
+	993:  "imaps",
+	995:  "pop3s",
 	3306: "mysql",
 	5432: "postgres",
 	6379: "redis",
@@ -19,35 +26,35 @@ var wellKnown = map[uint16]string{
 	27017: "mongodb",
 }
 
-// Labeler maps port numbers to human-readable service names.
+// Labeler resolves port numbers to service name strings.
 type Labeler struct {
-	custom map[uint16]string
+	labels map[int]string
 }
 
-// New returns a Labeler seeded with well-known labels.
-// Extra custom mappings can be supplied and will override defaults.
-func New(custom map[uint16]string) *Labeler {
-	m := make(map[uint16]string, len(wellKnown)+len(custom))
-	for k, v := range wellKnown {
-		m[k] = v
+// New creates a Labeler. Custom overrides are merged on top of the built-in
+// defaults; a nil map is safe and uses only defaults.
+func New(custom map[int]string) *Labeler {
+	merged := make(map[int]string, len(defaultLabels)+len(custom))
+	for k, v := range defaultLabels {
+		merged[k] = v
 	}
 	for k, v := range custom {
-		m[k] = v
+		merged[k] = v
 	}
-	return &Labeler{custom: m}
+	return &Labeler{labels: merged}
 }
 
-// Label returns the service name for port, or an empty string if unknown.
-func (l *Labeler) Label(port uint16) string {
-	return l.custom[port]
+// Label returns the service name for the given port number, or an empty string
+// if the port is not recognised.
+func (l *Labeler) Label(port int) string {
+	return l.labels[port]
 }
 
-// LabelOrPort returns the service name for port, or the numeric string if unknown.
-func (l *Labeler) LabelOrPort(port uint16) string {
-	if name, ok := l.custom[port]; ok {
+// LabelOrPort returns the service name if known, otherwise the port number
+// formatted as a decimal string.
+func (l *Labeler) LabelOrPort(port int) string {
+	if name := l.labels[port]; name != "" {
 		return name
 	}
 	return fmt.Sprintf("%d", port)
 }
-
-import "fmt"

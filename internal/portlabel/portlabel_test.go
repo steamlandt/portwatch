@@ -16,7 +16,7 @@ func TestLabelKnownPort(t *testing.T) {
 func TestLabelUnknownPortReturnsEmpty(t *testing.T) {
 	l := portlabel.New(nil)
 	if got := l.Label(9999); got != "" {
-		t.Fatalf("expected empty, got %q", got)
+		t.Fatalf("expected empty string, got %q", got)
 	}
 }
 
@@ -35,15 +35,21 @@ func TestLabelOrPortReturnsName(t *testing.T) {
 }
 
 func TestCustomOverridesDefault(t *testing.T) {
-	l := portlabel.New(map[uint16]string{80: "my-app"})
-	if got := l.Label(80); got != "my-app" {
-		t.Fatalf("expected my-app, got %q", got)
+	custom := map[int]string{80: "my-http"}
+	l := portlabel.New(custom)
+	if got := l.Label(80); got != "my-http" {
+		t.Fatalf("expected my-http, got %q", got)
 	}
 }
 
-func TestCustomAddsNewLabel(t *testing.T) {
-	l := portlabel.New(map[uint16]string{9200: "elasticsearch"})
-	if got := l.Label(9200); got != "elasticsearch" {
-		t.Fatalf("expected elasticsearch, got %q", got)
+func TestCustomAddsNewEntry(t *testing.T) {
+	custom := map[int]string{12345: "my-service"}
+	l := portlabel.New(custom)
+	if got := l.Label(12345); got != "my-service" {
+		t.Fatalf("expected my-service, got %q", got)
+	}
+	// Built-in defaults still present.
+	if got := l.Label(22); got != "ssh" {
+		t.Fatalf("expected ssh, got %q", got)
 	}
 }
