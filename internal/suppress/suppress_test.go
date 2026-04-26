@@ -23,19 +23,12 @@ func TestSecondCallWithinWindowIsSuppressed(t *testing.T) {
 }
 
 func TestCallAfterWindowIsNotSuppressed(t *testing.T) {
-	now := time.Now()
-	s := suppress.New(1 * time.Second)
-	// Manually prime with a time in the past beyond the window.
-	// Use Reset + IsSuppressed trick via a fake clock via unexported field workaround:
-	// Instead, just use a very short window and sleep.
-	s2 := suppress.New(10 * time.Millisecond)
-	s2.IsSuppressed("k")
+	s := suppress.New(10 * time.Millisecond)
+	s.IsSuppressed("k")
 	time.Sleep(20 * time.Millisecond)
-	if s2.IsSuppressed("k") {
+	if s.IsSuppressed("k") {
 		t.Fatal("expected call after window to not be suppressed")
 	}
-	_ = now
-	_ = s
 }
 
 func TestDifferentKeysAreIndependent(t *testing.T) {
@@ -62,5 +55,15 @@ func TestResetAllClearsAllKeys(t *testing.T) {
 	s.ResetAll()
 	if s.IsSuppressed("a") || s.IsSuppressed("b") {
 		t.Fatal("expected all keys cleared after ResetAll")
+	}
+}
+
+func TestResetUnknownKeyIsNoop(t *testing.T) {
+	// Resetting a key that was never seen should not panic or affect other keys.
+	s := suppress.New(5 * time.Second)
+	s.IsSuppressed("existing")
+	s.Reset("nonexistent") // should be a no-op
+	if !s.IsSuppressed("existing") {
+		t.Fatal("expected existing key to still be suppressed after resetting an unknown key")
 	}
 }
