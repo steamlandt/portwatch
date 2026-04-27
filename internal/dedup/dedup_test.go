@@ -66,3 +66,19 @@ func TestDifferentProtoIsNotDuplicate(t *testing.T) {
 		t.Fatal("expected different proto to not be a duplicate")
 	}
 }
+
+func TestStateTransitionsAreTrackedIndependently(t *testing.T) {
+	d := dedup.New()
+
+	// Establish initial state for two ports
+	d.IsDuplicate("tcp", 8080, "open")
+	d.IsDuplicate("tcp", 9090, "open")
+
+	// Change state on one port should not affect the other
+	if d.IsDuplicate("tcp", 8080, "closed") {
+		t.Fatal("expected state change on port 8080 to not be a duplicate")
+	}
+	if !d.IsDuplicate("tcp", 9090, "open") {
+		t.Fatal("expected port 9090 state to remain independently tracked as duplicate")
+	}
+}
